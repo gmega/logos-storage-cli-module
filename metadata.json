@@ -1,0 +1,27 @@
+{
+  "name": "storage_cli",
+  "display_name": "Logos Storage Simple CLI",
+  "version": "1.0.0",
+  "type": "core",
+  "interface": "universal",
+  "category": "general",
+  "description": "A simple CLI frontend module to Logos module",
+  "main": "storage_cli_plugin",
+  "dependencies": [
+    "storage_module"
+  ],
+  "concurrency": "multi",
+  "nix": {
+    "packages": {
+      "build": [
+      ],
+      "runtime": [
+      ]
+    },
+    "external_libraries": [],
+    "cmake": {
+      "find_packages": [],
+      "extra_sources": []
+    }
+  }
+}
