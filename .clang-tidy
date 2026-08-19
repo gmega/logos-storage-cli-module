@@ -1,0 +1,13 @@
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  performance-*,
+  readability-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -readability-magic-numbers
+
+HeaderFilterRegex: 'src/[^/]*\.h$'
+FormatStyle: file
