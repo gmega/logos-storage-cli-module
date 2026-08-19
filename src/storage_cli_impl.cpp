@@ -21,19 +21,19 @@ constexpr int64_t kChunkSize = 65536;
 
 // We'll use two promises: one for synchronizing node startup, and another for
 // upload/download operation results.
-std::promise<bool> g_started;
+std::promise<bool> gStarted;
 // The start future is potentially called by several different threads, so we
 // need a shared future.
-std::shared_future<bool> g_started_fut = g_started.get_future().share();
-// g_result is initialized during an asynchronous operation dispatch, set in
+std::shared_future<bool> gStartedFut = gStarted.get_future().share();
+// gResult is initialized during an asynchronous operation dispatch, set in
 // the callback once, and consumed by the dispatcher exactly once, so we can
 // use a regular future.
-std::promise<std::string> g_result;
+std::promise<std::string> gResult;
 // Serializes upload/download operations.
 std::mutex g_opLock;
 
-int64_t g_transferBytes = 0;
-int64_t g_transferTotal = 0;
+int64_t gTransferBytes = 0;
+int64_t gTransferTotal = 0;
 
 void echo(const std::string &line, bool endline = true) {
   std::cout << "[storage_cli] " << line;
@@ -44,13 +44,13 @@ void echo(const std::string &line, bool endline = true) {
 }
 
 void printProgress() {
-  if (g_transferTotal == 0) {
-    echo(" " + std::to_string(g_transferBytes) + " bytes");
+  if (gTransferTotal == 0) {
+    echo(" " + std::to_string(gTransferBytes) + " bytes");
     return;
   }
-  int64_t completed = std::min(g_transferBytes, g_transferTotal);
-  echo("  " + std::to_string(completed * 100 / g_transferTotal) + "% (" +
-       std::to_string(completed) + " of " + std::to_string(g_transferTotal) +
+  int64_t completed = std::min(gTransferBytes, gTransferTotal);
+  echo("  " + std::to_string(completed * 100 / gTransferTotal) + "% (" +
+       std::to_string(completed) + " of " + std::to_string(gTransferTotal) +
        " bytes)");
 }
 
@@ -64,16 +64,16 @@ json parsePayload(const std::string &payload) {
 }
 
 void onProgress(const std::string &payload) {
-  g_transferBytes += parsePayload(payload).value("bytes", int64_t{0});
+  gTransferBytes += parsePayload(payload).value("bytes", int64_t{0});
   printProgress();
 }
 
-void onDone(const std::string &payload) { g_result.set_value(payload); }
+void onDone(const std::string &payload) { gResult.set_value(payload); }
 
 StdLogosResult syncTransferOp(const std::string &what, int64_t total,
                               const std::function<StdLogosResult()> &op) {
   echo("Waiting for node to start.");
-  if (!g_started_fut.get()) {
+  if (!gStartedFut.get()) {
     return StdLogosResult{
         .success = false, .value = {}, .error = "Node start failed"};
   }
@@ -83,9 +83,9 @@ StdLogosResult syncTransferOp(const std::string &what, int64_t total,
   // This is not a limitation in storage but of our state tracking.
   std::scoped_lock lock(g_opLock);
 
-  g_result = std::promise<std::string>();
-  g_transferBytes = 0;
-  g_transferTotal = total;
+  gResult = std::promise<std::string>();
+  gTransferBytes = 0;
+  gTransferTotal = total;
 
   // Actually sends the operation to Storage.
   StdLogosResult started = op();
@@ -94,7 +94,7 @@ StdLogosResult syncTransferOp(const std::string &what, int64_t total,
   }
 
   // Storage has its own internal op timeout so I don't need one here.
-  const std::string result = g_result.get_future().get();
+  const std::string result = gResult.get_future().get();
   const json payload = parsePayload(result);
   return StdLogosResult{.success = payload.value("success", false),
                         .value = payload,
@@ -109,7 +109,7 @@ void StorageCliImpl::onContextReady() {
   storage.onStorageStart([](const std::string &payload) {
     const json j = parsePayload(payload);
     echo("Node started with result: " + j.dump());
-    g_started.set_value(j.value("success", false));
+    gStarted.set_value(j.value("success", false));
   });
 
   storage.onStorageUploadProgress(&onProgress);
@@ -123,12 +123,12 @@ void StorageCliImpl::onContextReady() {
   if (!storage.init(kNodeConfig)) {
     echo("failed to initialize storage module. We'll assume it has already "
          "been initialized.");
-    g_started.set_value(true);
+    gStarted.set_value(true);
     return;
   }
   if (!storage.start()) {
     echo("node start was rejected. We'll assume it has already been started.");
-    g_started.set_value(true);
+    gStarted.set_value(true);
   }
 }
 
@@ -161,6 +161,7 @@ StdLogosResult StorageCliImpl::download(const std::string &cid,
 
   echo("Downloading " + cid + " to " + path.string());
 
+  // TODO fetch manifest and compute the total for download.
   return syncTransferOp("download", 0, [&] {
     return modules().storage_module.downloadToUrl(cid, path.string(), false,
                                                   kChunkSize);
