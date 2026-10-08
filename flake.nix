@@ -1,8 +1,8 @@
 
 {
   inputs = {
-    logos-module-builder.url = "github:logos-co/logos-module-builder";
-    storage_module.url = "github:logos-co/logos-storage-module?ref=refs/tags/v2.1.2";
+    logos-module-builder.url = "github:logos-co/logos-module-builder/0.3.2";
+    storage_module.url = "github:logos-co/logos-storage-module/v3.0.2";
   };
 
   outputs = inputs@{ logos-module-builder, ... }:

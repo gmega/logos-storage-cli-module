@@ -10,13 +10,12 @@
 class StorageCliImpl : public LogosModuleContext {
 public:
   /**
-   * Uploads a file to the local node. Returns `true` if upload succeeded,
-   * false otherwise.
+   * Uploads a file to the local node and returns the completion result.
    */
   StdLogosResult publish(const std::string &input);
   /**
    * Downloads a file from the network onto the specified local path.
-   * Returns `true` if download succeeded, false otherwise.
+   * Returns the completion result.
    */
   StdLogosResult download(const std::string &cid, const std::string &output);
 
